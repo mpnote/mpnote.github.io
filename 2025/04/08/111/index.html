@@ -1,0 +1,384 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Replication Controller和ReplicaSet | Mpnote</title><meta name="author" content="好记性不如烂笔头"><meta name="copyright" content="好记性不如烂笔头"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="1.1 ReplicaSet是什么？    ReplicaSet（简称RS）是Pod控制器类型的一种实现，用于确保由其管控的Pod对象副本数在任一时刻都能精确满足期望的数量。Kubernetes中还有一个类似功能的控制器：Replication Controller。ReplicaSet是Replication Controller的下一代副本控制器，目前两者只在标签选择器支持的查找方式有区别，R">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Replication Controller和ReplicaSet">
+<meta property="og:url" content="http://example.com/2025/04/08/111/index.html">
+<meta property="og:site_name" content="Mpnote">
+<meta property="og:description" content="1.1 ReplicaSet是什么？    ReplicaSet（简称RS）是Pod控制器类型的一种实现，用于确保由其管控的Pod对象副本数在任一时刻都能精确满足期望的数量。Kubernetes中还有一个类似功能的控制器：Replication Controller。ReplicaSet是Replication Controller的下一代副本控制器，目前两者只在标签选择器支持的查找方式有区别，R">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://oss.012700.xyz/butterfly/2024/11/butterfly-docs-changelog-cover-4.png">
+<meta property="article:published_time" content="2025-04-08T07:31:37.684Z">
+<meta property="article:modified_time" content="2025-04-08T08:15:32.999Z">
+<meta property="article:author" content="好记性不如烂笔头">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://oss.012700.xyz/butterfly/2024/11/butterfly-docs-changelog-cover-4.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Replication Controller和ReplicaSet",
+  "url": "http://example.com/2025/04/08/111/",
+  "image": "https://oss.012700.xyz/butterfly/2024/11/butterfly-docs-changelog-cover-4.png",
+  "datePublished": "2025-04-08T07:31:37.684Z",
+  "dateModified": "2025-04-08T08:15:32.999Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "好记性不如烂笔头",
+      "url": "http://example.com"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2025/04/08/111/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//fonts.googleapis.com" crossorigin=""/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web&amp;display=swap" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.json","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":1,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":true,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: true,
+    post: true
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"已切换为繁体中文","cht_to_chs":"已切换为简体中文","day_to_night":"已切换为深色模式","night_to_day":"已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#1f1f1f","position":"bottom-left"},
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Replication Controller和ReplicaSet',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="preconnect" href="https://jsd.012700.xyz"><link href="/self/btf.css" rel="stylesheet"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src= "/img/loading.gif" data-lazy-src="/img/WechatIMG4.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">17</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/shuoshuo/"><i class="fa-fw fas fa-comment-dots"></i><span> 说说</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-thumbs-up"></i><span> 示例</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/21cfbf15/"><span> 📑 主题文档</span></a></div><div class="menus_item"><a class="site-page" href="/messageboard/"><i class="fa-fw fas fa-comment-dots"></i><span> 留言板</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fa-language"></i><span> 语言</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/en/"><i class="fa-fw fas fa-e"></i><span> English</span></a></li><li><a class="site-page child" href="/"><i class="fa-fw fas fa-c"></i><span> 中文</span></a></li></ul></div></div></div></div><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Mpnote</span></a><a class="nav-page-title" href="/"><span class="site-name">Replication Controller和ReplicaSet</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/shuoshuo/"><i class="fa-fw fas fa-comment-dots"></i><span> 说说</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-thumbs-up"></i><span> 示例</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/21cfbf15/"><span> 📑 主题文档</span></a></div><div class="menus_item"><a class="site-page" href="/messageboard/"><i class="fa-fw fas fa-comment-dots"></i><span> 留言板</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fa-language"></i><span> 语言</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/en/"><i class="fa-fw fas fa-e"></i><span> English</span></a></li><li><a class="site-page child" href="/"><i class="fa-fw fas fa-c"></i><span> 中文</span></a></li></ul></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">Replication Controller和ReplicaSet</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class="post-meta-label">发表于</span><time datetime="2025-04-08T07:31:37.684Z" title="发表于 2025-04-08 15:31:37">2025-04-08</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span></div></div></div><article class="container post-content" id="article-container"><p>1.1 ReplicaSet是什么？<br>    ReplicaSet（简称RS）是Pod控制器类型的一种实现，用于确保由其管控的Pod对象副本数在任一时刻都能精确满足期望的数量。Kubernetes中还有一个类似功能的控制器：Replication Controller。ReplicaSet是Replication Controller的下一代副本控制器，目前两者只在标签选择器支持的查找方式有区别，ReplicaSet支持等式查找与集合查找两种方式，Replication Controller只支持等式查找。</p>
+<pre><code>    实现上kubernetes官方推荐不要直接使用ReplicaSet，用Deployments取而代之，Deployments是比ReplicaSet更高级的概念，它会管理ReplicaSet并提供很多其它有用的特性，最重要的是Deployments支持声明式更新，声明式更好相比于命令式更新的好处是不会丢失历史变更。总结起来就是：不要再直接使用ReplicaSet。
+</code></pre>
+<p>1.2 比较ReplicaSet和ReplicationController<br>        ReplicaSet的行为与ReplicationController完全相同，但pod选择器的表达能力更强。虽然ReplicationController的标签选择器只允许包含某个标签的匹配pod，但ReplicaSet的选择器还允许匹配缺少某个标签的pod，或包含特定标签名的pod，不管其值如何。</p>
+<pre><code>    kubectl命令同时支持ReplicaSet与Replication Controller两种副本控制器，但是kubectl rolling-update只支持Replication Controller类型的副本控制器，也就是说ReplicaSet无法通过kubectl rolling-update命令滚动升级。如果想要使用rolling-update功能的话，kubernetes官方推荐使用Deployments，并且因为Deployments是声明式的而rolling-update是命令式，所以推荐使用rollout命令实现滚动升级（kubectl管理对象的方式大体上分成两种，一种是命令式，另一种是声明式，声明式又细分成命令声明式与对角声明式，三种方式不能混用，所以才有此说）。
+
+    另外，举个例子，单个ReplicationController无法将pod与标签env=production和env=devel同时匹配。它只能匹配带有env=devel标签的pod或带有env=devel标签的pod。但是一个ReplicaSet可以匹配两组pod并将它们视为一个大组。
+
+    同样，无论ReplicationController的值如何，ReplicationController都无法仅基于标签名的存在来匹配pod，而ReplicaSet则可以。例如，ReplicaSet可匹配所有包含名为env的标签的pod，无论ReplicaSet的实际值是什么（可以理解为env=*）。
+</code></pre>
+<p>1.3 ReplicaSet 怎么管理Pod<br>        ReplicaSet会通过标签选择器（Label-Selector）管理所有带有与选择器匹配的标签的容器。创建Pod时，它会认为所有Pod 是一样的，是无状态的，所以在创建顺序上不会有先后之分。如果使用相同的标签选择器创建另一个ReplicaSet，则之前的ReplicaSet会认为是它创建了这些Pod，会触发控制循环里的逻辑删掉多余的Pod ，新的ReplicSet又会再次创建Pod。双方的当前状态始终不等于期望状态，这就会引发问题，因此确保ReplicaSet标签选择器的唯一性这一点很重要。</p>
+<pre><code>    如上图所示，ReplicaSet控制器资源启动后会查找集群中匹配其标签选择器的Pod资源对象，当前活动对象的数量与期望的数量不吻合时，多则删除，少则通过Pod模板创建以补足，等Pod资源副本数量符合期望值后即进入下一轮和解循环。
+
+    ReplicaSet的副本数量、标签选择器甚至是Pod模板都可以随时按需进行修改，不过仅改动期望的副本数量会对现存的Pod副本产生直接影响。修改标签选择器可能会使得现有的Pod副本的标签变得不再匹配，此时ReplicaSet控制器要做的不过是不再计入它们而已。另外，在创建完成后，ReplicaSet也不会再关注Pod对象中的实际内容，因此Pod模板的改动也只会对后来新建的Pod副本产生影响。
+
+    相比较于手动创建和管理Pod资源来说，ReplicaSet能够实现以下功能。
+</code></pre>
+<p>确保Pod资源对象的数量精确反映期望值：ReplicaSet需要确保由其控制运行的Pod副本数量精确吻合配置中定义的期望值，否则就会自动补足所缺或终止所余。<br>确保Pod健康运行：探测到由其管控的Pod对象因其所在的工作节点故障而不可用时，自动请求由调度器于其他工作节点创建缺失的Pod副本。<br>弹性伸缩：业务规模因各种原因时常存在明显波动，在波峰或波谷期间，可以通过ReplicaSet控制器动态调整相关Pod资源对象的数量。<br>        此外，在必要时还可以通过HPA（HroizontalPodAutoscaler）控制器实现Pod资源规模的自动伸缩。</p>
+<p>2 ReplicaSet使用<br>2.1 ReplicaSet 的YAML文件定义<br>        下面这个配置文件的模板里罗列了定义ReplicaSet对象的YAML文件内容的主要组成部分：</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>apiVersion: apps&#x2F;v1<br>kind: ReplicaSet<br>metadata:<br>  name: some-name<br>  labels:<br>    app: some-App<br>    tier: some-Tier<br>spec:<br>  replicas: 3  # 告诉k8s需要多少副本<br>  Selector: # 用于匹配Pod的标签选择器<br>    matchLabels:<br>      tier: someTier<br>  template:<br>    metadata:<br>      labels:<br>        app: some-App<br>        tier: someTier<br>    spec: # 与Pod对象的spec定义类似<br>      Containers: …<br>        Kubernetes里所有的API对象都由四部分组成：</p>
+<p>apiVersion – 当前使用的Kubernetes的API版本。<br>kind – 你想创建的对象的种类，当前自然是ReplicaSet。<br>metadata – 元数据，用于唯一表示当前的对象，比如name、namespace等。<br>spec – 当前对象的指定配置。<br>        但是ReplicaSet的spec部分的定义看起来与其他对象的spec定义略有不同。上面的示例中有两个spec字段。第一个spec声明的是ReplicaSet的属性–定义有多少个Pod副本（默认将仅部署1个Pod）、匹配Pod标签的选择器等。第二个spec用于Pod里的容器属性等配置。</p>
+<pre><code>    实际上&quot; .spec.template&quot;里的内容就是声明Pod对象时要定义的各种属性，所以这部分也叫做PodTemplate（Pod模板）。还有一个值得注意的地方是：在.spec.selector中定义的标签选择器必须能够匹配到spec.template.metadata.labels里定义的Pod标签，否则Kubernetes将不允许创建ReplicaSet。
+</code></pre>
+<p>2.2 ReplicaSet使用案例<br>        了解了什么是副本集，以及如何编写副本集的声明文件后，接下来我们动手创建一个副本集。在此示例中，我们将通过replica.yaml文件创建一个具有3个Pod副本的nginx应用。</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释</p>
+<h1 id="replica-yaml"><a href="#replica-yaml" class="headerlink" title="replica.yaml"></a>replica.yaml</h1><p>apiVersion: apps&#x2F;v1<br>kind: ReplicaSet<br>metadata:<br>  name: myapp-replicas<br>  labels:<br>    app: myapp<br>    tier: frontend<br>spec:<br>  replicas: 3<br>  selector:<br>    matchLabels:<br>      tier: frontend<br>    matchExpressions:<br>      - {key: tier, operator: In, values: [frontend]}<br>  template:<br>    metadata:<br>      labels:<br>        app: myapp<br>        tier: frontend<br>    spec:<br>      containers:<br>        - name: nginx<br>          image: nginx<br>          ports:<br>            - containerPort: 80<br>        首先我们运行kubectl create命令使用上面定义的声明文件创建对象。</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>$ kubectl create -f replica.yaml replicaset.apps “myapp-replicas” created<br>        接下来通过命令确保副本集创建成功</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>$ kubectl get replicaset<br>NAME             DESIRED CURRENT READY  AGE<br>myapp-replicas     3        3     3     15s<br>        上面的命令返回显示了myapp-replicas副本集部署了三个副本，三个都是就绪状态。接下来我们再看一下每个Pod副本的运行状态：</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>$ kubectl get pod<br>NAME                 READY STATUS     RESTARTS AGE<br>myapp-replicas-67rkp 1&#x2F;1   Running       0     33s<br>myapp-replicas-6kfd8 1&#x2F;1   Running       0     33s<br>myapp-replicas-s96sg 1&#x2F;1   Running       0     33s<br>        所有3个都处于运行状态，重启次数都是0，这意味着目前为止我们的应用程序没有崩溃过。我们还可以使用kubectl describe命令查询副本集对象的详细信息，信息里的Events部分详细显示了ReplicaSet控制器进行过哪些编排动作。</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>$ kubectl describe replicaset myapp-replicas<br>Name: myapp-replicas<br>Namespace: default<br>Selector: tier&#x3D;frontend,tier in (frontend)<br>Labels: app&#x3D;myapp<br>        tier&#x3D;frontend<br>Annotations:<br>  Replicas: 3 current &#x2F; 3 desired<br>  Pods Status: 3 Running &#x2F; 0 Waiting &#x2F; 0 Succeeded &#x2F; 0 Failed<br>  Pod Template:<br>    Labels: app&#x3D;myapp<br>            tier&#x3D;frontend<br>    Containers:<br>      nginx:<br>        Image: nginx<br>        Port: 80&#x2F;TCP<br>        Host Port: 0&#x2F;TCP<br>        Environment:<br>          Mounts:<br>            Volumes:<br>Events:<br>Type   Reason             Age     From                     Message </p>
+<hr>
+<p>Normal SuccessfulCreate   12m     replicaset-controller    Created pod: myapp-replicas-6kfd8<br>Normal SuccessfulCreate   12m     replicaset-controller    Created pod: myapp-replicas-67rkp<br>Normal SuccessfulCreate   12m     replicaset-controller    Created pod: myapp-replicas-s96sg<br>2.3 ReplicaSet支持的操作<br>2.3.1 删除ReplicaSet与它控制下的pod<br>        kubectl delete命令将删除ReplicaSet及其pod。具体的过程是kubectl delete首先将副本的数量调整到0，然后等待kubernetes控制面将pod删除，再后再删除ReplicaSet，kubectl delete可以被中断，重新运行后继续删除处理。</p>
+<p>2.3.2 只删除ReplicaSet<br>        只需要运行kubectl delete命令时加上–cascade&#x3D;false选项，ReplicaSet被删除，其控制的pod不受影响。</p>
+<p>2.3.3 从ReplicaSet隔离pod<br>        更改pod标签，使其无法与ReplicaSet标签选择器匹配就可以将pod从ReplicaSet隔离出来，这时pod副本个数变少，ReplicaSet自动补足。</p>
+<p>2.3.4 ReplicaSet扩缩容<br>        只需简单的更新ReplicaSet spec中的.spec.replicas值就可实现。</p>
+<p>2.3.5 ReplicaSet水平自动扩缩容器<br>        通过HPA控制ReplicaSet根据负荷如cpu使用情况自动扩缩容。HPA spec如下：</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>apiVersion: autoscaling&#x2F;v1<br>kind: HorizontalPodAutoscaler<br>metadata:<br>  name: frontend-scaler<br>spec:<br>  scaleTargetRef:<br>    kind: ReplicaSet<br>    name: frontend<br>    minReplicas: 3<br>    maxReplicas: 10<br>    targetCPUUtilizationPercentage: 50<br>创建HPA对象：</p>
+<p>代码语言：javascript代码运行次数：0<br>运行<br>AI代码解释<br>kubectl create -f <a target="_blank" rel="noopener" href="https://k8s.io/examples/controllers/hpa-rs.yaml">https://k8s.io/examples/controllers/hpa-rs.yaml</a><br>        以上根据CPU使用情况，在3到10之间动态的调整副本数量。</p>
+</article><div class="tag_share"></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/04/22/222/" title="Deployment"><img class="cover" src= "/img/loading.gif" data-lazy-src="https://oss.012700.xyz/butterfly/2024/11/butterfly-docs-changelog-cover-1.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Deployment</div></div><div class="info-2"><div class="info-item-1">每一个 Deployment 都会和它的依赖组成以下的拓扑结构，在这个拓扑结构中的子节点都是『稳定』的，任意节点的删除都会被 Kubernetes 的控制器重启： 所有的 Deployment 对象都是由 Kubernetes 集群中的 DeploymentController 进行管理，DeploymentController 会在启动时通过 Informer 监听三种不同资源的通知，Pod、ReplicaSet 和 Deployment，这三种资源的变动都会触发 DeploymentController 中的回调。 不同的事件最终都会在被过滤后进入控制器持有的队列，等待工作进程的消费，下面的这些事件都会触发 Deployment 的同步；Deployment 的变动；Deployment 相关的 ReplicaSet 变动；Deployment 相关的 Pod 数量为 0 时，Pod 的删除事件；DeploymentController 会在调用 Run 方法时启动多个工作进程，这些工作进程会运行 worker 方法从队列中读取最新的 Deployment 对象进行同步。 D...</div></div></div></a><a class="pagination-related" href="/2025/04/08/ReplicaSet%E5%92%8CReplication/" title="Replication Controller和ReplicaSet"><img class="cover" src= "/img/loading.gif" data-lazy-src="https://oss.012700.xyz/butterfly/2024/11/butterfly-docs-changelog-cover-9.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Replication Controller和ReplicaSet</div></div><div class="info-2"><div class="info-item-1">Replication ControllerReplicaSetReplicaSet是支持基于集合的Label Selector（标签选择器）的下一代Replication Controller，它主要用作Deployment协调创建、删除和更新Pod，和Replication Controller唯一的区别是ReplicaSet 支持Label Selector（标签选择器）。在实际应用中，虽然ReplicaSet可以单独使用，但是一般建议使用Deployment来自动管理ReplicaSet，除非自定义的Pod不需要更新或有其他编排等。 123456789101112131415161718apiVersion: v1kind: ReplicationControllermetadata:  name: nginx-rcspec:  replicas: 3  selector:    app: nginx  template:    metadata:      labels:        app: nginx    spec:      containers:      ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content is-expand"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#replica-yaml"><span class="toc-number">1.</span> <span class="toc-text">replica.yaml</span></a></li></ol></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;2025 By 好记性不如烂笔头</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><div class="js-pjax"><script>(() => {
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = `%%{init:{ 'theme':'${theme}'}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (true) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const applyThemeDefaultsConfig = theme => {
+    if (theme === 'dark-mode') {
+      Chart.defaults.color = "rgba(255, 255, 255, 0.8)"
+      Chart.defaults.borderColor = "rgba(255, 255, 255, 0.2)"
+      Chart.defaults.scale.ticks.backdropColor = "transparent"
+    } else {
+      Chart.defaults.color = "rgba(0, 0, 0, 0.8)"
+      Chart.defaults.borderColor = "rgba(0, 0, 0, 0.1)"
+      Chart.defaults.scale.ticks.backdropColor = "transparent"
+    }
+  }
+
+  // Recursively traverse the config object and automatically apply theme-specific color schemes
+  const applyThemeConfig = (obj, theme) => {
+    if (typeof obj !== 'object' || obj === null) return
+
+    Object.keys(obj).forEach(key => {
+      const value = obj[key]
+      // If the property is an object and has theme-specific options, apply them
+      if (typeof value === 'object' && value !== null) {
+        if (value[theme]) {
+          obj[key] = value[theme] // Apply the value for the current theme
+        } else {
+          // Recursively process child objects
+          applyThemeConfig(value, theme)
+        }
+      }
+    })
+  }
+
+  const runChartJS = ele => {
+    window.loadChartJS = true
+
+    Array.from(ele).forEach((item, index) => {
+      const chartSrc = item.firstElementChild
+      const chartID = item.getAttribute('data-chartjs-id') || ('chartjs-' + index) // Use custom ID or default ID
+      const width = item.getAttribute('data-width')
+      const existingCanvas = document.getElementById(chartID)
+
+      // If a canvas already exists, remove it to avoid rendering duplicates
+      if (existingCanvas) {
+          existingCanvas.parentNode.remove()
+      }
+
+      const chartDefinition = chartSrc.textContent
+      const canvas = document.createElement('canvas')
+      canvas.id = chartID
+
+      const div = document.createElement('div')
+      div.className = 'chartjs-wrap'
+
+      if (width) {
+        div.style.width = width
+      }
+
+      div.appendChild(canvas)
+      chartSrc.insertAdjacentElement('afterend', div)
+
+      const ctx = document.getElementById(chartID).getContext('2d')
+
+      const config = JSON.parse(chartDefinition)
+
+      const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark-mode' : 'light-mode'
+
+      // Set default styles (initial setup)
+      applyThemeDefaultsConfig(theme)
+
+      // Automatically traverse the config and apply dual-mode color schemes
+      applyThemeConfig(config, theme)
+
+      new Chart(ctx, config)
+    })
+  }
+
+  const loadChartJS = () => {
+    const chartJSEle = document.querySelectorAll('#article-container .chartjs-container')
+    if (chartJSEle.length === 0) return
+
+    window.loadChartJS ? runChartJS(chartJSEle) : btf.getScript('https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js').then(() => runChartJS(chartJSEle))
+  }
+
+  // Listen for theme change events
+  btf.addGlobalFn('themeChange', loadChartJS, 'chartjs')
+  btf.addGlobalFn('encrypt', loadChartJS, 'chartjs')
+
+  window.pjax ? loadChartJS() : document.addEventListener('DOMContentLoaded', loadChartJS)
+})()</script></div><script data-pjax src="/self/btf.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/click-heart.min.js" async="async" mobile="true"></script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
